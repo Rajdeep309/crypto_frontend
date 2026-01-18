@@ -1,184 +1,220 @@
+import { useEffect, useState } from "react";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer
-} from "recharts";
-
-/* Summary cards data */
-const summary = [
-  {
-    title: "Realized P&L (YTD)",
-    value: "+$2,100",
-    note: "Closed positions"
-  },
-  {
-    title: "Unrealized P&L",
-    value: "+$1,800",
-    note: "Open positions"
-  },
-  {
-    title: "Tax Status",
-    value: "Ready",
-    note: "Last export 3 days ago"
-  }
-];
-
-/* Chart data */
-const pnlData = [
-  { month: "Jan", pnl: 200 },
-  { month: "Feb", pnl: 420 },
-  { month: "Mar", pnl: 610 },
-  { month: "Apr", pnl: 580 },
-  { month: "May", pnl: 890 },
-  { month: "Jun", pnl: 1200 }
-];
-
-/* Table data */
-const reports = [
-  {
-    period: "Jan–Mar 2025",
-    realized: "+$450",
-    unrealized: "+$1,200",
-    status: "Ready"
-  },
-  {
-    period: "FY 2024",
-    realized: "+$2,100",
-    unrealized: "+$800",
-    status: "Pending"
-  }
-];
+  fetchPortfolioPnL,
+  fetchRealizedPnL,
+  fetchAssetPnL,
+  exportPnLCsv,
+} from "../services/pnlService";
 
 export default function ReportsPage() {
+  /* ================= STATE ================= */
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  /* ✅ EXPORT CSV FUNCTION */
-  const exportCSV = () => {
-    const headers = ["Period", "Realized P&L", "Unrealized P&L", "Status"];
+  const [portfolioPnL, setPortfolioPnL] = useState(null);
+  const [realizedPnL, setRealizedPnL] = useState(null);
 
-    const rows = reports.map((row) => [
-      row.period,
-      row.realized,
-      row.unrealized,
-      row.status
-    ]);
+  const [selectedAsset, setSelectedAsset] = useState("");
+  const [assetPnL, setAssetPnL] = useState(null);
+  const [assetLoading, setAssetLoading] = useState(false);
 
-    const csvContent =
-      [headers, ...rows]
-        .map((e) => e.join(","))
-        .join("\n");
+  /* ================= LOAD PORTFOLIO + REALIZED ================= */
+  const loadReports = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;"
-    });
+      const [portfolioRes, realizedRes] =
+        await Promise.all([
+          fetchPortfolioPnL(),
+          fetchRealizedPnL(),
+        ]);
 
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "crypto_pnl_report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      setPortfolioPnL(portfolioRes.data.data);
+      setRealizedPnL(realizedRes.data.data);
+    } catch (e) {
+      console.error("Reports load failed", e);
+      setError("Failed to load reports");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  /* ================= LOAD ASSET PnL ================= */
+  const loadAssetPnL = async (symbol) => {
+    if (!symbol) return;
+
+    try {
+      setAssetLoading(true);
+      setAssetPnL(null);
+
+      const res = await fetchAssetPnL(symbol);
+      setAssetPnL(res.data.data);
+    } catch (e) {
+      console.error("Asset PnL failed", e);
+      setAssetPnL(null);
+    } finally {
+      setAssetLoading(false);
+    }
+  };
+
+  /* ================= CSV EXPORT ================= */
+  const downloadCsv = async () => {
+    try {
+      const res = await exportPnLCsv();
+
+      const blob = new Blob([res.data], {
+        type: "text/csv",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "pnl-report.csv";
+      a.click();
+    } catch (e) {
+      alert("CSV export failed");
+    }
+  };
+
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  /* ================= STATES ================= */
+  if (loading) return <p className="p-8">Loading reports...</p>;
+  if (error) return <p className="p-8 text-red-400">{error}</p>;
+
+  /* ================= UI ================= */
   return (
-    <div className="space-y-8">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {summary.map((item) => (
-          <div
-            key={item.title}
-            className="bg-[#0b1220] border border-white/5 rounded-xl p-4"
-          >
-            <p className="text-sm text-slate-400">{item.title}</p>
-            <p className="text-2xl font-bold mt-1">
-              {item.value}
-            </p>
-            <p className="text-xs text-slate-500 mt-1">
-              {item.note}
-            </p>
-          </div>
-        ))}
-      </div>
+    <div className="p-8 max-w-6xl mx-auto">
+      <h1 className="text-2xl mb-2">Reports</h1>
+      <p className="text-slate-400 mb-8">
+        Profit, loss and tax summaries
+      </p>
 
-      {/* P&L Chart */}
-      <div className="bg-[#0b1220] border border-white/5 rounded-2xl p-4">
-        <p className="font-semibold mb-3">
-          P&L Over Time
-        </p>
-        <div className="h-[260px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={pnlData}>
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="pnl"
-                stroke="#34d399"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Tax Period Table */}
-      <div className="bg-[#0b1220] border border-white/5 rounded-2xl p-4">
-        <div className="flex justify-between items-center mb-4">
-          <p className="font-semibold">
-            P&L / Tax Periods
+      {/* ================= SUMMARY CARDS ================= */}
+      <div className="grid grid-cols-3 gap-6 mb-10">
+        {/* Realized */}
+        <div className="bg-slate-900 p-6 rounded-xl">
+          <p className="text-slate-400 text-sm">
+            Realized P&L
           </p>
-          {/* ✅ WORKING EXPORT BUTTON */}
-          <button
-            onClick={exportCSV}
-            className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm hover:bg-emerald-500/30 transition"
-          >
-            Export CSV
-          </button>
+          <p className="text-2xl font-semibold">
+            ${realizedPnL?.realizedPnL.toFixed(2)}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Closed positions
+          </p>
         </div>
 
-        <table className="w-full text-sm">
-          <thead className="text-slate-400 border-b border-white/5">
-            <tr>
-              <th className="text-left py-2">Period</th>
-              <th classt className="text-right py-2">Realized</th>
-              <th className="text-right py-2">Unrealized</th>
-              <th className="text-center py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reports.map((row) => (
-              <tr
-                key={row.period}
-                className="border-b border-white/5"
+        {/* Unrealized */}
+        <div className="bg-slate-900 p-6 rounded-xl">
+          <p className="text-slate-400 text-sm">
+            Unrealized P&L
+          </p>
+          <p className="text-2xl font-semibold">
+            ${portfolioPnL?.unrealizedPnL.toFixed(2)}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Open positions
+          </p>
+        </div>
+
+        {/* Tax */}
+        <div className="bg-slate-900 p-6 rounded-xl">
+          <p className="text-slate-400 text-sm">
+            Tax Status
+          </p>
+          <p className="text-2xl font-semibold">
+            {realizedPnL?.taxHint}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Based on realized P&L
+          </p>
+        </div>
+      </div>
+
+      {/* ================= ASSET WISE PnL ================= */}
+      <div className="bg-slate-900 p-6 rounded-xl mb-10">
+        <h2 className="text-lg mb-4">
+          Asset-wise P&L
+        </h2>
+
+        <select
+          value={selectedAsset}
+          onChange={(e) => {
+            setSelectedAsset(e.target.value);
+            loadAssetPnL(e.target.value);
+          }}
+          className="bg-slate-800 border border-slate-700 p-2 rounded mb-4"
+        >
+          <option value="">Select Asset</option>
+          <option value="BTC">BTC</option>
+          <option value="ETH">ETH</option>
+          <option value="SOL">SOL</option>
+        </select>
+
+        {assetLoading && (
+          <p className="text-slate-400">
+            Calculating asset P&L...
+          </p>
+        )}
+
+        {!assetLoading && assetPnL && (
+          <div className="grid grid-cols-3 gap-6">
+            <div>
+              <p className="text-slate-400 text-sm">
+                Invested
+              </p>
+              <p className="text-xl">
+                ${assetPnL.invested.toFixed(2)}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-slate-400 text-sm">
+                Current Value
+              </p>
+              <p className="text-xl">
+                ${assetPnL.currentValue.toFixed(2)}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-slate-400 text-sm">
+                Unrealized P&L
+              </p>
+              <p
+                className={`text-xl ${
+                  assetPnL.unrealizedPnL >= 0
+                    ? "text-green-400"
+                    : "text-red-400"
+                }`}
               >
-                <td className="py-3">{row.period}</td>
-                <td className="py-3 text-right">
-                  {row.realized}
-                </td>
-                <td className="py-3 text-right">
-                  {row.unrealized}
-                </td>
-                <td className="py-3 text-center">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs ${
-                      row.status === "Ready"
-                        ? "bg-emerald-500/20 text-emerald-400"
-                        : "bg-yellow-500/20 text-yellow-400"
-                    }`}
-                  >
-                    {row.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                ${assetPnL.unrealizedPnL.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!assetLoading &&
+          selectedAsset &&
+          !assetPnL && (
+            <p className="text-slate-500 text-sm">
+              No data available for this asset
+            </p>
+          )}
+      </div>
+
+      {/* ================= EXPORT ================= */}
+      <div className="flex justify-end">
+        <button
+          onClick={downloadCsv}
+          className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded"
+        >
+          Export CSV
+        </button>
       </div>
     </div>
   );

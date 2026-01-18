@@ -1,29 +1,30 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { login } from "../services/authService";
+import { useNavigate, Link } from "react-router-dom";
+import { forgetPassword } from "../services/authService";
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      await login(email, password);
+      // ✅ Verify email exists
+      await forgetPassword(email);
 
-      // ✅ Dashboard root
-      navigate("/");
+      // ✅ Move directly to reset password page
+      navigate("/reset-password", {
+        state: { email },
+      });
     } catch (err) {
       setError(
-        err.response?.data?.message ||
-          "Invalid email or password"
+        err.response?.data?.message || "Email not found"
       );
     } finally {
       setLoading(false);
@@ -34,7 +35,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-900">
       <div className="bg-slate-800 p-8 rounded-xl w-full max-w-md shadow-lg">
         <h2 className="text-2xl font-bold text-white text-center mb-6">
-          Login
+          Forgot Password
         </h2>
 
         {error && (
@@ -43,21 +44,12 @@ export default function LoginPage() {
           </p>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Enter registered email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full p-3 rounded bg-slate-700 text-white outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             required
             className="w-full p-3 rounded bg-slate-700 text-white outline-none focus:ring-2 focus:ring-emerald-500"
           />
@@ -67,29 +59,19 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-semibold py-3 rounded disabled:opacity-50"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Checking..." : "Continue"}
           </button>
         </form>
 
-        {/* 🔹 EXTRA LINKS */}
-        <div className="text-center mt-4 space-y-2">
+        <p className="text-slate-400 text-sm mt-6 text-center">
+          Remember password?{" "}
           <Link
-            to="/forgot-password"
-            className="text-blue-400 hover:underline text-sm"
+            to="/login"
+            className="text-blue-400 hover:underline"
           >
-            Forgot password?
+            Login
           </Link>
-
-          <p className="text-slate-400 text-sm">
-            Don’t have an account?{" "}
-            <Link
-              to="/register"
-              className="text-blue-400 hover:underline"
-            >
-              Register
-            </Link>
-          </p>
-        </div>
+        </p>
       </div>
     </div>
   );

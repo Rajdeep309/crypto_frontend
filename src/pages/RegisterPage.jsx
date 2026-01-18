@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { signUp } from "../services/authService"; // ✅ FIXED
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -17,29 +17,16 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        "http://localhost:8089/api/account/auth/public/sign-up",
-        null, // 🔴 body NOT required
-        {
-          params: {
-            name,
-            email,
-            password,
-          },
-        }
-      );
+      // ✅ FIXED: signUp instead of register
+      await signUp(name, email, password);
 
-      // ✅ token optional (if backend sends)
-      if (res.data?.data?.token) {
-        localStorage.setItem("token", res.data.data.token);
-      }
-
+      // after success → login page
       navigate("/login");
     } catch (err) {
       console.error(err);
       setError(
         err.response?.data?.message ||
-        "Email already exists or password invalid"
+          "Email already exists or invalid input"
       );
     } finally {
       setLoading(false);
@@ -48,8 +35,8 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900">
-      <div className="bg-slate-800 p-8 rounded-xl w-full max-w-md">
-        <h2 className="text-2xl font-bold text-white text-center mb-4">
+      <div className="bg-slate-800 p-8 rounded-xl w-full max-w-md shadow-lg">
+        <h2 className="text-2xl font-bold text-white text-center mb-6">
           Register
         </h2>
 
@@ -66,7 +53,7 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full p-3 rounded bg-slate-700 text-white outline-none"
+            className="w-full p-3 rounded bg-slate-700 text-white outline-none focus:ring-2 focus:ring-emerald-500"
           />
 
           <input
@@ -75,7 +62,7 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full p-3 rounded bg-slate-700 text-white outline-none"
+            className="w-full p-3 rounded bg-slate-700 text-white outline-none focus:ring-2 focus:ring-emerald-500"
           />
 
           <input
@@ -84,21 +71,21 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full p-3 rounded bg-slate-700 text-white outline-none"
+            className="w-full p-3 rounded bg-slate-700 text-white outline-none focus:ring-2 focus:ring-emerald-500"
           />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-500 hover:bg-green-600 text-black font-semibold py-3 rounded disabled:opacity-50"
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-semibold py-3 rounded disabled:opacity-50"
           >
             {loading ? "Registering..." : "Register"}
           </button>
         </form>
 
-        <p className="text-slate-400 text-sm mt-4 text-center">
+        <p className="text-slate-400 text-sm mt-6 text-center">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-400">
+          <Link to="/login" className="text-blue-400 hover:underline">
             Login
           </Link>
         </p>

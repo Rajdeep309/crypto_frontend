@@ -1,52 +1,64 @@
 import { useEffect, useState } from "react";
 import { getPriceSnapshots } from "../../services/priceSnapshotService";
+import { fetchAssetPnL } from "../../services/pnlService";
 
 export default function AssetDrawer({ asset, onClose }) {
-  // 🔒 Hooks MUST be at top
+  /* ================= STATE ================= */
   const [prices, setPrices] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [assetPnL, setAssetPnL] = useState(null);
+
+  const [loadingPrices, setLoadingPrices] = useState(false);
+  const [loadingPnL, setLoadingPnL] = useState(false);
+
   const [error, setError] = useState("");
 
-  // 🔄 Fetch price snapshots when drawer opens / asset changes
+  /* ================= FETCH PRICE SNAPSHOTS ================= */
   useEffect(() => {
-    if (!asset || !asset.assetSymbol) return;
+    if (!asset?.assetSymbol) return;
 
     const loadPrices = async () => {
       try {
-        setLoading(true);
+        setLoadingPrices(true);
         setError("");
         setPrices([]);
 
-        console.log(
-          "📈 Fetching price snapshots for:",
-          asset.assetSymbol
-        );
-
         const res = await getPriceSnapshots(asset.assetSymbol);
-
-        // Backend response: { message, data }
-        const snapshotData = res?.data?.data || [];
-        setPrices(snapshotData);
+        setPrices(res?.data?.data || []);
       } catch (err) {
-        console.error("❌ Price snapshot error:", err);
-
-        if (err.response?.status === 401) {
-          setError("Unauthorized. Please login again.");
-        } else {
-          setError("Failed to load price data.");
-        }
+        console.error("Price snapshot error", err);
+        setError("Failed to load price data");
       } finally {
-        setLoading(false);
+        setLoadingPrices(false);
       }
     };
 
     loadPrices();
   }, [asset]);
 
-  // 🚪 Drawer closed → render nothing (AFTER hooks)
+  /* ================= FETCH ASSET PnL ================= */
+  useEffect(() => {
+    if (!asset?.assetSymbol) return;
+
+    const loadAssetPnL = async () => {
+      try {
+        setLoadingPnL(true);
+        const res = await fetchAssetPnL(asset.assetSymbol);
+        setAssetPnL(res?.data?.data || null);
+      } catch (err) {
+        console.warn("Asset PnL not available");
+        setAssetPnL(null); // 👈 safe fallback
+      } finally {
+        setLoadingPnL(false);
+      }
+    };
+
+    loadAssetPnL();
+  }, [asset]);
+
+  /* ================= DRAWER CLOSED ================= */
   if (!asset) return null;
 
-  // 🧮 Calculations
+  /* ================= CALCULATIONS ================= */
   const quantity = Number(asset.quantity || 0);
   const avgCost = Number(asset.avgCost || 0);
 
@@ -57,19 +69,17 @@ export default function AssetDrawer({ asset, onClose }) {
 
   const investedValue = quantity * avgCost;
   const currentValue =
-    currentPrice !== null
-      ? quantity * currentPrice
-      : null;
+    currentPrice !== null ? quantity * currentPrice : null;
 
   const profitLoss =
-    currentValue !== null
-      ? currentValue - investedValue
-      : null;
+    currentValue !== null ? currentValue - investedValue : null;
 
+  /* ================= UI ================= */
   return (
     <div className="fixed inset-0 bg-black/60 flex justify-end z-50">
       <div className="w-full max-w-md bg-slate-900 h-full p-6 border-l border-slate-700 overflow-y-auto">
-        {/* ================= Header ================= */}
+
+        {/* ================= HEADER ================= */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">
             {asset.assetSymbol} Details
@@ -82,7 +92,7 @@ export default function AssetDrawer({ asset, onClose }) {
           </button>
         </div>
 
-        {/* ================= Asset Info ================= */}
+        {/* ================= ASSET INFO ================= */}
         <div className="space-y-2 text-sm mb-6">
           <p>
             <span className="text-slate-400">Quantity:</span>{" "}
@@ -90,7 +100,7 @@ export default function AssetDrawer({ asset, onClose }) {
           </p>
           <p>
             <span className="text-slate-400">Avg Cost:</span>{" "}
-            ${avgCost}
+            ${avgCost.toLocaleString()}
           </p>
           <p>
             <span className="text-slate-400">Source:</span>{" "}
@@ -100,37 +110,29 @@ export default function AssetDrawer({ asset, onClose }) {
 
         <hr className="border-slate-700 my-4" />
 
-        {/* ================= Price Section ================= */}
-        {loading && (
-          <p className="text-slate-400">
-            Loading price history...
-          </p>
+        {/* ================= PRICE SECTION ================= */}
+        {loadingPrices && (
+          <p className="text-slate-400">Loading price history...</p>
         )}
 
-        {!loading && error && (
+        {!loadingPrices && error && (
           <p className="text-red-400">{error}</p>
         )}
 
-        {!loading && !error && prices.length === 0 && (
-          <p className="text-slate-400">
-            No price data available
-          </p>
+        {!loadingPrices && !error && prices.length === 0 && (
+          <p className="text-slate-400">No price data available</p>
         )}
 
-        {!loading && !error && prices.length > 0 && (
+        {!loadingPrices && prices.length > 0 && (
           <>
             <div className="space-y-2 mb-4">
               <p>
-                <span className="text-slate-400">
-                  Current Price:
-                </span>{" "}
+                <span className="text-slate-400">Current Price:</span>{" "}
                 ${currentPrice.toFixed(2)}
               </p>
 
               <p>
-                <span className="text-slate-400">
-                  Profit / Loss:
-                </span>{" "}
+                <span className="text-slate-400">Profit / Loss:</span>{" "}
                 <span
                   className={
                     profitLoss >= 0
@@ -143,21 +145,17 @@ export default function AssetDrawer({ asset, onClose }) {
               </p>
             </div>
 
-            {/* ================= Price History ================= */}
+            {/* ================= PRICE HISTORY ================= */}
             <div className="mt-4">
               <h3 className="text-sm mb-2 text-slate-300">
                 Price History
               </h3>
+
               <ul className="text-xs space-y-1 max-h-40 overflow-y-auto">
                 {prices.map((p, i) => (
-                  <li
-                    key={i}
-                    className="flex justify-between"
-                  >
+                  <li key={i} className="flex justify-between">
                     <span>
-                      {new Date(
-                        p.capturedAt
-                      ).toLocaleDateString()}
+                      {new Date(p.capturedAt).toLocaleDateString()}
                     </span>
                     <span>${p.priceUsd}</span>
                   </li>
@@ -167,7 +165,51 @@ export default function AssetDrawer({ asset, onClose }) {
           </>
         )}
 
-        {/* ================= Footer ================= */}
+        {/* ================= ASSET PnL SECTION ================= */}
+        <hr className="border-slate-700 my-4" />
+
+        <h3 className="text-sm mb-2 text-slate-300">
+          Asset P&L Summary
+        </h3>
+
+        {loadingPnL && (
+          <p className="text-slate-400">Calculating P&L...</p>
+        )}
+
+        {!loadingPnL && assetPnL && (
+          <div className="space-y-2 text-sm">
+            <p>
+              <span className="text-slate-400">Invested:</span>{" "}
+              ${assetPnL.invested.toFixed(2)}
+            </p>
+
+            <p>
+              <span className="text-slate-400">Current Value:</span>{" "}
+              ${assetPnL.currentValue.toFixed(2)}
+            </p>
+
+            <p>
+              <span className="text-slate-400">Unrealized P&L:</span>{" "}
+              <span
+                className={
+                  assetPnL.unrealizedPnL >= 0
+                    ? "text-green-400"
+                    : "text-red-400"
+                }
+              >
+                ${assetPnL.unrealizedPnL.toFixed(2)}
+              </span>
+            </p>
+          </div>
+        )}
+
+        {!loadingPnL && !assetPnL && (
+          <p className="text-slate-500 text-sm">
+            Asset P&L not available
+          </p>
+        )}
+
+        {/* ================= FOOTER ================= */}
         <button
           onClick={onClose}
           className="mt-6 w-full bg-red-500 hover:bg-red-600 py-2 rounded"

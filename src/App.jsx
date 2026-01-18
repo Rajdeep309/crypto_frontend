@@ -1,17 +1,26 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
 import DashboardLayout from "./components/layout/DashboardLayout";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
-// Pages
+/* ===== Pages ===== */
 import DashboardPage from "./pages/DashboardPage";
 import PortfolioPage from "./pages/PortfolioPage";
+import TradesPage from "./pages/TradesPage";
 import RiskAlertsPage from "./pages/RiskAlertsPage";
 import ReportsPage from "./pages/ReportsPage";
 import SettingsPage from "./pages/SettingsPage";
+import AddExchangePage from "./pages/AddExchangePage";
+
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import AddExchangePage from "./pages/AddExchangePage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 export default function App() {
   return (
@@ -21,6 +30,8 @@ export default function App() {
         {/* ================= PUBLIC ROUTES ================= */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* ================= PROTECTED ROUTES ================= */}
         <Route
@@ -40,6 +51,17 @@ export default function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <PortfolioPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/trades"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <TradesPage />
               </DashboardLayout>
             </ProtectedRoute>
           }
@@ -78,7 +100,6 @@ export default function App() {
           }
         />
 
-        {/* 🔑 ADD EXCHANGE (NEW) */}
         <Route
           path="/add-exchange"
           element={

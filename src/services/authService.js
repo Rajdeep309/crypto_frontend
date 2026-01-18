@@ -1,28 +1,71 @@
-import axios from "axios";
+import api from "./axiosInstance";
 
-const API_URL = "http://localhost:8089/api/account/auth/public";
-
-export const login = async (email, password) => {
-  const response = await axios.post(
-    `${API_URL}/log-in`,
+/* ================= SIGN UP ================= */
+export const signUp = async (name, email, password) => {
+  const res = await api.post(
+    "/api/account/auth/public/sign-up",
     null,
     {
-      params: { email, password }
+      params: { name, email, password },
     }
   );
 
-  const token = response.data.data.token;
+  // backend may or may not return token
+  const token = res?.data?.data?.token;
+  if (token) {
+    localStorage.setItem("token", token);
+  }
 
-  // 🔥 THIS LINE WAS MISSING
-  localStorage.setItem("token", token);
-
-  return response.data;
+  return res.data;
 };
 
+/* ================= LOGIN ================= */
+export const login = async (email, password) => {
+  const res = await api.post(
+    "/api/account/auth/public/log-in",
+    null,
+    {
+      params: { email, password },
+    }
+  );
+
+  // ✅ Store token safely
+  const token = res?.data?.data?.token;
+  if (token) {
+    localStorage.setItem("token", token);
+  }
+
+  return res.data;
+};
+
+/* ================= LOGOUT ================= */
 export const logout = () => {
   localStorage.removeItem("token");
 };
 
+/* ================= FORGET PASSWORD ================= */
+export const forgetPassword = async (email) => {
+  const res = await api.post(
+    "/api/account/auth/public/forget-password",
+    null,
+    { params: { email } }
+  );
+
+  return res.data;
+};
+
+/* ================= RESET PASSWORD ================= */
+export const resetPassword = async (email, newPassword) => {
+  const res = await api.patch(
+    "/api/account/auth/public/reset-password",
+    null,
+    { params: { email, newPassword } }
+  );
+
+  return res.data;
+};
+
+/* ================= AUTH HELPERS ================= */
 export const getToken = () => {
   return localStorage.getItem("token");
 };

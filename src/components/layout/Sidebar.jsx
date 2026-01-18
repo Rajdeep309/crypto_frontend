@@ -5,7 +5,8 @@ import {
   ShieldAlert,
   FileText,
   Settings,
-  PlusCircle
+  PlusCircle,
+  ArrowLeftRight, // 🔄 Trades icon
 } from "lucide-react";
 
 const linkBase =
@@ -27,44 +28,74 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="space-y-2">
-        <NavLink to="/" end className={({ isActive }) =>
-          `${linkBase} ${isActive ? activeClass : inactiveClass}`
-        }>
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? activeClass : inactiveClass}`
+          }
+        >
           <LayoutDashboard size={18} />
           Dashboard
         </NavLink>
 
-        <NavLink to="/portfolio" className={({ isActive }) =>
-          `${linkBase} ${isActive ? activeClass : inactiveClass}`
-        }>
+        <NavLink
+          to="/portfolio"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? activeClass : inactiveClass}`
+          }
+        >
           <Wallet size={18} />
           Portfolio
         </NavLink>
 
-        <NavLink to="/add-exchange" className={({ isActive }) =>
-          `${linkBase} ${isActive ? activeClass : inactiveClass}`
-        }>
+        {/* 🔄 Trades */}
+        <NavLink
+          to="/trades"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? activeClass : inactiveClass}`
+          }
+        >
+          <ArrowLeftRight size={18} />
+          Trades
+        </NavLink>
+
+        <NavLink
+          to="/add-exchange"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? activeClass : inactiveClass}`
+          }
+        >
           <PlusCircle size={18} />
           Add Exchange
         </NavLink>
 
-        <NavLink to="/alerts" className={({ isActive }) =>
-          `${linkBase} ${isActive ? activeClass : inactiveClass}`
-        }>
+        <NavLink
+          to="/alerts"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? activeClass : inactiveClass}`
+          }
+        >
           <ShieldAlert size={18} />
           Risk & Alerts
         </NavLink>
 
-        <NavLink to="/reports" className={({ isActive }) =>
-          `${linkBase} ${isActive ? activeClass : inactiveClass}`
-        }>
+        <NavLink
+          to="/reports"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? activeClass : inactiveClass}`
+          }
+        >
           <FileText size={18} />
           Reports
         </NavLink>
 
-        <NavLink to="/settings" className={({ isActive }) =>
-          `${linkBase} ${isActive ? activeClass : inactiveClass}`
-        }>
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? activeClass : inactiveClass}`
+          }
+        >
           <Settings size={18} />
           Settings
         </NavLink>
@@ -72,7 +103,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="mt-auto text-xs text-slate-500 pt-6">
-        v1.0 • Local Demo
+        {/* v1.0 • Local Demo */}
       </div>
     </aside>
   );

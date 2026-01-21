@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   fetchAllTrades,
   fetchIncrementalTrades,
@@ -29,6 +29,9 @@ export default function TradesPage() {
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
 
+  // 🔥 STRICT MODE GUARD
+  const hasLoadedRef = useRef(false);
+
   /* ================= PAGE LOAD → INCREMENTAL ONLY ================= */
   const loadIncrementalTrades = async () => {
     try {
@@ -52,7 +55,11 @@ export default function TradesPage() {
   };
 
   useEffect(() => {
-    loadIncrementalTrades(); // ✅ CORRECT
+    // ✅ Prevent double call in React 18 StrictMode
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
+    loadIncrementalTrades();
   }, []);
 
   /* ================= MANUAL INCREMENTAL SYNC ================= */

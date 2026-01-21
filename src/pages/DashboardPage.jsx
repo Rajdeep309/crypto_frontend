@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import StatCard from "../components/ui/StatCard";
 import PortfolioValueChart from "../components/charts/PortfolioValueChart";
 import QuickActions from "../components/ui/QuickActions";
@@ -9,7 +9,10 @@ import {
   refreshManualHoldings,
 } from "../services/holdingService";
 import { getPriceSnapshots } from "../services/priceSnapshotService";
-import { fetchAssetPnL, fetchRealizedPnL } from "../services/pnlService";
+import {
+  fetchAssetPnL,
+  fetchRealizedPnL,
+} from "../services/pnlService";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -19,10 +22,15 @@ export default function DashboardPage() {
 
   const [pnl24h, setPnl24h] = useState({ value: 0, percent: 0 });
   const [riskCounts, setRiskCounts] = useState({ high: 0, medium: 0 });
-
   const [taxStatus, setTaxStatus] = useState("—");
 
+  // 🔥 STRICT MODE GUARD
+  const hasLoadedRef = useRef(false);
+
   useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
     loadDashboard();
   }, []);
 
@@ -30,7 +38,7 @@ export default function DashboardPage() {
     try {
       setLoading(true);
 
-      /* ================= HOLDINGS ================= */
+      /* ================= HOLDINGS (ONCE) ================= */
       const [exRes, manRes] = await Promise.all([
         refreshExchangeHoldings(),
         refreshManualHoldings(),
@@ -46,70 +54,73 @@ export default function DashboardPage() {
       );
       setExchangeCount(exchanges.size);
 
-      /* ================= CALCULATIONS ================= */
-      let total = 0;
-      let todayValue = 0;
-      let yesterdayValue = 0;
+      if (!holdings.length) {
+        setTotalValue(0);
+        setPnl24h({ value: 0, percent: 0 });
+        setRiskCounts({ high: 0, medium: 0 });
+        setTaxStatus("—");
+        return;
+      }
 
+      /* ================= PER-ASSET PARALLEL FETCH ================= */
       let high = 0;
       let medium = 0;
 
-      for (const h of holdings) {
-        const symbol = h.assetSymbol;
-        const qty = Number(h.quantity || 0);
-        const avgCost = Number(h.avgCost || 0);
+      let todayValue = 0;
+      let yesterdayValue = 0;
 
-        if (!symbol || qty === 0) continue;
+      const assetResults = await Promise.all(
+        holdings.map(async (h) => {
+          const symbol = h.assetSymbol;
+          const qty = Number(h.quantity || 0);
+          const avgCost = Number(h.avgCost || 0);
 
-        let latestPrice;
-        let prevPrice;
+          if (!symbol || qty === 0) return null;
 
-        /* ===== PRICE SNAPSHOT WITH FALLBACK ===== */
-        try {
-          const snapRes = await getPriceSnapshots(symbol);
-          const prices = snapRes?.data || [];
+          try {
+            const [snapRes, pnlRes] = await Promise.all([
+              getPriceSnapshots(symbol),
+              fetchAssetPnL(symbol),
+            ]);
 
-          if (prices.length > 0) {
-            latestPrice = Number(prices[prices.length - 1].priceUsd);
-            prevPrice =
-              prices.length > 1
-                ? Number(prices[prices.length - 2].priceUsd)
-                : latestPrice;
-          } else {
-            // 🔥 MANUAL HOLDING FALLBACK
-            latestPrice = avgCost;
-            prevPrice = avgCost;
+            const prices = snapRes?.data || [];
+            const pnl = pnlRes?.data?.data;
+
+            let latestPrice = avgCost;
+            let prevPrice = avgCost;
+
+            if (prices.length > 0) {
+              latestPrice = Number(prices[prices.length - 1].priceUsd);
+              prevPrice =
+                prices.length > 1
+                  ? Number(prices[prices.length - 2].priceUsd)
+                  : latestPrice;
+            }
+
+            const currentValue = latestPrice * qty;
+            const yesterdayVal = prevPrice * qty;
+
+            if (pnl?.invested > 0) {
+              const percent =
+                (pnl.unrealizedPnL / pnl.invested) * 100;
+
+              if (percent <= -10) high++;
+              else if (percent <= -5) medium++;
+            }
+
+            return { currentValue, yesterdayVal };
+          } catch {
+            return null;
           }
-        } catch {
-          latestPrice = avgCost;
-          prevPrice = avgCost;
-        }
+        })
+      );
 
-        const currentValue = latestPrice * qty;
-        const yesterdayVal = prevPrice * qty;
+      assetResults.filter(Boolean).forEach((r) => {
+        todayValue += r.currentValue;
+        yesterdayValue += r.yesterdayVal;
+      });
 
-        total += currentValue;
-        todayValue += currentValue;
-        yesterdayValue += yesterdayVal;
-
-        /* ================= RISK ================= */
-        try {
-          const pnlRes = await fetchAssetPnL(symbol);
-          const pnl = pnlRes?.data?.data;
-
-          if (pnl?.invested > 0) {
-            const percent =
-              (pnl.unrealizedPnL / pnl.invested) * 100;
-
-            if (percent <= -10) high++;
-            else if (percent <= -5) medium++;
-          }
-        } catch {
-          // ignore risk error
-        }
-      }
-
-      setTotalValue(total);
+      setTotalValue(todayValue);
 
       /* ================= 24H PNL ================= */
       const diff = todayValue - yesterdayValue;

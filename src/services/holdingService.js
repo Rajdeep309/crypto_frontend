@@ -1,59 +1,60 @@
 import api from "./axiosInstance";
 
+/* ================= CACHE ================= */
+let exchangeCache = null;
+let manualCache = null;
+
 /* ================= EXCHANGE HOLDINGS ================= */
-// Page load / manual refresh
-export const refreshExchangeHoldings = async () => {
+export const refreshExchangeHoldings = async (force = false) => {
+  if (exchangeCache && !force) return exchangeCache;
+
   try {
     const res = await api.post(
       "/api/holding/public/refresh-exchange-holdings"
     );
-    return res.data; // { message, data }
-  } catch (error) {
-    if (error.response?.status === 404) {
-      console.warn("No exchange holdings found");
-      return {
-        message: "No exchange holdings found",
-        data: [],
-      };
-    }
 
-    throw error; // other errors (network, auth, etc.)
+    exchangeCache = res.data; // cache
+    return exchangeCache;
+  } catch (error) {
+    exchangeCache = { message: "No exchange holdings", data: [] };
+    return exchangeCache;
   }
 };
 
 /* ================= MANUAL HOLDINGS ================= */
-// Page load / after add-edit-delete
-export const refreshManualHoldings = async () => {
+export const refreshManualHoldings = async (force = false) => {
+  if (manualCache && !force) return manualCache;
+
   try {
     const res = await api.get(
       "/api/holding/public/refresh-manual-holdings"
     );
-    return res.data;
-  } catch (error) {
-    if (error.response?.status === 404) {
-      console.warn("No manual holdings found");
-      return {
-        message: "No manual holdings found",
-        data: [],
-      };
-    }
 
-    throw error;
+    manualCache = res.data; // cache
+    return manualCache;
+  } catch (error) {
+    manualCache = { message: "No manual holdings", data: [] };
+    return manualCache;
   }
 };
 
+/* ================= CLEAR CACHE ================= */
+export const clearHoldingCache = () => {
+  exchangeCache = null;
+  manualCache = null;
+};
+
 /* ================= MANUAL ADD / EDIT ================= */
-// Used by ManualHoldingDrawer
 export const manualAddEditHolding = async (payload) => {
   const res = await api.post(
     "/api/holding/public/manual-add-edit",
     payload
   );
+  clearHoldingCache(); // important
   return res.data;
 };
 
 /* ================= MANUAL DELETE ================= */
-// Only for MANUAL holdings
 export const deleteManualHolding = async (assetSymbol) => {
   const res = await api.delete(
     "/api/holding/public/delete-manual-holding",
@@ -61,5 +62,6 @@ export const deleteManualHolding = async (assetSymbol) => {
       params: { assetSymbol },
     }
   );
+  clearHoldingCache(); // important
   return res.data;
 };

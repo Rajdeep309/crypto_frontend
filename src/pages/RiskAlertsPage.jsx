@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ShieldAlert, Info } from "lucide-react";
 import AssetDrawer from "../components/portfolio/AssetDrawer";
 import {
@@ -27,8 +27,14 @@ export default function RiskAlertsPage() {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 STRICT MODE GUARD
+  const hasLoadedRef = useRef(false);
+
   /* ================= LOAD DATA ================= */
   useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
     loadRiskAlerts();
   }, []);
 
@@ -36,7 +42,7 @@ export default function RiskAlertsPage() {
     try {
       setLoading(true);
 
-      /* 1️⃣ LOAD HOLDINGS */
+      /* 1️⃣ LOAD HOLDINGS (ONCE) */
       const [exRes, manRes] = await Promise.all([
         refreshExchangeHoldings(),
         refreshManualHoldings(),
@@ -47,61 +53,63 @@ export default function RiskAlertsPage() {
         ...(manRes?.data || []),
       ];
 
-      const alertsTemp = [];
-
-      /* 2️⃣ PROCESS EACH HOLDING */
-      for (const h of holdings) {
-        if (!h?.assetSymbol) continue;
-
-        const symbol = h.assetSymbol.toUpperCase();
-
-        /* PRICE SNAPSHOT */
-        const snapRes = await getPriceSnapshots(symbol);
-        const prices = snapRes?.data?.data || [];
-
-        if (!prices.length) continue;
-
-        const latestPrice =
-          prices[prices.length - 1]?.priceUsd ?? 0;
-
-        /* PnL */
-        const pnlRes = await fetchAssetPnL(symbol);
-        const pnl = pnlRes?.data?.data;
-
-        if (!pnl || !pnl.invested) continue;
-
-        const pnlPercent =
-          (pnl.unrealizedPnL / pnl.invested) * 100;
-
-        /* 3️⃣ RISK LOGIC */
-        let level = "LOW";
-        let title = "Stable Asset";
-        let description = "No major risk detected.";
-
-        if (pnlPercent <= -10) {
-          level = "HIGH";
-          title = "High Loss Detected";
-          description = `Unrealized loss is ${pnlPercent.toFixed(2)}%`;
-        } else if (pnlPercent <= -5) {
-          level = "MEDIUM";
-          title = "Moderate Risk";
-          description = `Asset is down ${pnlPercent.toFixed(2)}%`;
-        }
-
-        alertsTemp.push({
-          id: symbol,
-          asset: symbol,
-          level,
-          title,
-          description,
-          source: h.walletType || "MANUAL",
-          price: latestPrice,
-          pnlPercent,
-          holding: h,
-        });
+      if (!holdings.length) {
+        setAlerts([]);
+        return;
       }
 
-      setAlerts(alertsTemp);
+      /* 2️⃣ PROCESS HOLDINGS (PARALLEL) */
+      const alertsTemp = await Promise.all(
+        holdings.map(async (h) => {
+          if (!h?.assetSymbol) return null;
+
+          const symbol = h.assetSymbol.toUpperCase();
+
+          const [snapRes, pnlRes] = await Promise.all([
+            getPriceSnapshots(symbol),
+            fetchAssetPnL(symbol),
+          ]);
+
+          const prices = snapRes?.data?.data || [];
+          const pnl = pnlRes?.data?.data;
+
+          if (!prices.length || !pnl?.invested) return null;
+
+          const latestPrice =
+            prices[prices.length - 1]?.priceUsd ?? 0;
+
+          const pnlPercent =
+            (pnl.unrealizedPnL / pnl.invested) * 100;
+
+          let level = "LOW";
+          let title = "Stable Asset";
+          let description = "No major risk detected.";
+
+          if (pnlPercent <= -10) {
+            level = "HIGH";
+            title = "High Loss Detected";
+            description = `Unrealized loss is ${pnlPercent.toFixed(2)}%`;
+          } else if (pnlPercent <= -5) {
+            level = "MEDIUM";
+            title = "Moderate Risk";
+            description = `Asset is down ${pnlPercent.toFixed(2)}%`;
+          }
+
+          return {
+            id: symbol,
+            asset: symbol,
+            level,
+            title,
+            description,
+            source: h.walletType || "MANUAL",
+            price: latestPrice,
+            pnlPercent,
+            holding: h,
+          };
+        })
+      );
+
+      setAlerts(alertsTemp.filter(Boolean));
     } catch (err) {
       console.error("Risk alert load failed", err);
     } finally {
@@ -148,7 +156,7 @@ export default function RiskAlertsPage() {
         )}
 
         {!loading && alerts.length === 0 && (
-          <p className="text-slate-400">No risk alerts detected 🎉</p>
+          <p className="text-slate-400">No risk alerts detected </p>
         )}
 
         <div className="space-y-3">

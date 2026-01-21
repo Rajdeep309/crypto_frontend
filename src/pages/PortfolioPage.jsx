@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import HoldingsTable from "../components/portfolio/HoldingsTable";
 import ManualHoldingDrawer from "../components/portfolio/ManualHoldingDrawer";
 import AssetDrawer from "../components/portfolio/AssetDrawer";
@@ -15,25 +15,36 @@ export default function PortfolioPage() {
   const [editAsset, setEditAsset] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 🔥 STRICT MODE GUARD (KEY FIX)
+  const hasLoadedRef = useRef(false);
+
   const loadHoldings = async () => {
     try {
       setLoading(true);
+
       const [exRes, manRes] = await Promise.all([
         refreshExchangeHoldings(),
         refreshManualHoldings(),
       ]);
+
       setExchangeHoldings(exRes?.data || []);
       setManualHoldings(manRes?.data || []);
+    } catch (err) {
+      console.error("Failed to load holdings", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // ✅ Prevent double API call in React 18 StrictMode
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
     loadHoldings();
   }, []);
 
-  /* ✅ BACKEND DELETE + REFRESH */
+  /* ✅ BACKEND DELETE + SAFE REFRESH */
   const handleDeleteManual = async (asset) => {
     const ok = window.confirm(
       `Delete ${asset.assetSymbol}?`
@@ -41,7 +52,7 @@ export default function PortfolioPage() {
     if (!ok) return;
 
     await deleteManualHolding(asset.assetSymbol);
-    loadHoldings(); // ✅ proper refresh
+    loadHoldings(); // single controlled refresh
   };
 
   return (
@@ -51,6 +62,7 @@ export default function PortfolioPage() {
         <h2 className="text-xl mb-4">Exchange Holdings</h2>
         <HoldingsTable
           data={exchangeHoldings}
+          loading={loading}
           onView={setViewAsset}
         />
       </div>
@@ -69,6 +81,7 @@ export default function PortfolioPage() {
 
         <HoldingsTable
           data={manualHoldings}
+          loading={loading}
           onView={setViewAsset}
           onEdit={setEditAsset}
           onDelete={handleDeleteManual}

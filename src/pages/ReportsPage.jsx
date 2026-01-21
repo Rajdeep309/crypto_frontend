@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchPortfolioPnL,
   fetchRealizedPnL,
@@ -18,6 +18,9 @@ export default function ReportsPage() {
   const [assetPnL, setAssetPnL] = useState(null);
   const [assetLoading, setAssetLoading] = useState(false);
 
+  // 🔥 STRICT MODE GUARD
+  const hasLoadedRef = useRef(false);
+
   /* ================= LOAD PORTFOLIO + REALIZED ================= */
   const loadReports = async () => {
     try {
@@ -29,8 +32,8 @@ export default function ReportsPage() {
         fetchRealizedPnL(),
       ]);
 
-      setPortfolioPnL(portfolioRes.data.data);
-      setRealizedPnL(realizedRes.data.data);
+      setPortfolioPnL(portfolioRes?.data?.data || null);
+      setRealizedPnL(realizedRes?.data?.data || null);
     } catch (e) {
       console.error("Reports load failed", e);
       setError("Failed to load reports");
@@ -39,18 +42,26 @@ export default function ReportsPage() {
     }
   };
 
+  useEffect(() => {
+    // ✅ Prevent double API call in React 18 StrictMode
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
+
+    loadReports();
+  }, []);
+
   /* ================= LOAD ASSET PnL ================= */
   const handleAssetPnL = async () => {
     if (!assetInput.trim()) return;
 
-    const symbol = assetInput.trim().toUpperCase(); // 🔥 IMPORTANT
+    const symbol = assetInput.trim().toUpperCase();
 
     try {
       setAssetLoading(true);
       setAssetPnL(null);
 
       const res = await fetchAssetPnL(symbol);
-      setAssetPnL(res.data.data);
+      setAssetPnL(res?.data?.data || null);
     } catch (e) {
       console.error("Asset PnL failed", e);
       setAssetPnL(null);
@@ -71,14 +82,12 @@ export default function ReportsPage() {
       a.href = url;
       a.download = "pnl-report.csv";
       a.click();
+
+      window.URL.revokeObjectURL(url);
     } catch {
       alert("CSV export failed");
     }
   };
-
-  useEffect(() => {
-    loadReports();
-  }, []);
 
   if (loading) return <p className="p-8">Loading reports...</p>;
   if (error) return <p className="p-8 text-red-400">{error}</p>;

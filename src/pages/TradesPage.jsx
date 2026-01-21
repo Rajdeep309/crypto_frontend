@@ -11,7 +11,6 @@ function calculateSummary(trades) {
 
   trades.forEach((t) => {
     const value = t.price * t.quantity;
-
     if (t.side === "BUY") totalBuy += value;
     if (t.side === "SELL") totalSell += value;
   });
@@ -30,13 +29,13 @@ export default function TradesPage() {
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState("");
 
-  /* 🔹 INITIAL FULL LOAD (ONCE) */
-  const loadTrades = async () => {
+  /* ================= PAGE LOAD → INCREMENTAL ONLY ================= */
+  const loadIncrementalTrades = async () => {
     try {
       setLoading(true);
       setMessage("");
 
-      const res = await fetchAllTrades();
+      const res = await fetchIncrementalTrades();
       const data = res?.data?.data || [];
 
       setTrades(data);
@@ -45,16 +44,20 @@ export default function TradesPage() {
         setMessage("No trades found");
       }
     } catch (e) {
-      console.error("Failed to fetch trades", e);
+      console.error(e);
       setMessage("Unable to load trades");
     } finally {
       setLoading(false);
     }
   };
 
-  /* 🔹 MANUAL INCREMENTAL SYNC */
+  useEffect(() => {
+    loadIncrementalTrades(); // ✅ CORRECT
+  }, []);
+
+  /* ================= MANUAL INCREMENTAL SYNC ================= */
   const syncTrades = async () => {
-    if (syncing) return; // 🚫 spam protection
+    if (syncing) return;
 
     try {
       setSyncing(true);
@@ -68,7 +71,6 @@ export default function TradesPage() {
         return;
       }
 
-      // 🧠 Merge without duplicates (latest on top)
       setTrades((prev) => {
         const ids = new Set(prev.map((t) => t.tradeId));
         const filtered = newTrades.filter(
@@ -79,14 +81,10 @@ export default function TradesPage() {
 
       setMessage(`${newTrades.length} new trades synced`);
     } catch (e) {
-      console.error("Failed to sync trades", e);
-
       if (e.response?.status === 503) {
         setMessage(
-          "Trade sync temporarily unavailable. Please try again later."
+          "Trade sync temporarily unavailable. Please try later."
         );
-      } else if (e.response?.status === 401) {
-        setMessage("Session expired. Please login again.");
       } else {
         setMessage("Failed to sync trades");
       }
@@ -95,11 +93,31 @@ export default function TradesPage() {
     }
   };
 
-  useEffect(() => {
-    loadTrades();
-  }, []);
+  /* ================= FETCH ALL (WARNING) ================= */
+  const fetchAllWithWarning = async () => {
+    const ok = window.confirm(
+      "⚠️ Fetching ALL previous trades may take 20–30 minutes and may hit exchange rate limits.\n\nDo you want to continue?"
+    );
 
-  /* 🔹 SUMMARY */
+    if (!ok) return;
+
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const res = await fetchAllTrades();
+      const data = res?.data?.data || [];
+
+      setTrades(data);
+      setMessage("All historical trades loaded");
+    } catch (e) {
+      setMessage("Failed to fetch all trades");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= SUMMARY ================= */
   const summary = useMemo(
     () => calculateSummary(trades),
     [trades]
@@ -111,29 +129,34 @@ export default function TradesPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Trades</h1>
 
-        <button
-          onClick={syncTrades}
-          disabled={syncing}
-          className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded disabled:opacity-50"
-        >
-          {syncing ? "Syncing..." : "Sync Trades"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={syncTrades}
+            disabled={syncing}
+            className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded disabled:opacity-50"
+          >
+            {syncing ? "Syncing..." : "Sync Trades"}
+          </button>
+
+          <button
+            onClick={fetchAllWithWarning}
+            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded"
+          >
+            Fetch All Previous Trades
+          </button>
+        </div>
       </div>
 
       {/* ================= SUMMARY ================= */}
       <div className="grid grid-cols-3 gap-6 mb-8">
         <div className="bg-slate-900 p-4 rounded">
           <p className="text-slate-400 text-sm">Invested</p>
-          <p className="text-xl">
-            ${summary.invested.toFixed(2)}
-          </p>
+          <p className="text-xl">${summary.invested.toFixed(2)}</p>
         </div>
 
         <div className="bg-slate-900 p-4 rounded">
           <p className="text-slate-400 text-sm">Returned</p>
-          <p className="text-xl">
-            ${summary.returned.toFixed(2)}
-          </p>
+          <p className="text-xl">${summary.returned.toFixed(2)}</p>
         </div>
 
         <div className="bg-slate-900 p-4 rounded">
@@ -150,7 +173,7 @@ export default function TradesPage() {
         </div>
       </div>
 
-      {/* ================= STATUS MESSAGE ================= */}
+      {/* ================= MESSAGE ================= */}
       {!loading && message && (
         <p className="mb-4 text-slate-400">{message}</p>
       )}
@@ -168,7 +191,7 @@ export default function TradesPage() {
                 <th className="p-3 text-left">Asset</th>
                 <th className="p-3 text-left">Side</th>
                 <th className="p-3 text-left">Qty</th>
-                <th className="p-3 text-left">Price (USD)</th>
+                <th className="p-3 text-left">Price</th>
                 <th className="p-3 text-left">Date</th>
               </tr>
             </thead>
@@ -178,9 +201,7 @@ export default function TradesPage() {
                   key={i}
                   className="border-t border-slate-700 hover:bg-slate-800/50"
                 >
-                  <td className="p-3 font-medium">
-                    {t.assetSymbol}
-                  </td>
+                  <td className="p-3">{t.assetSymbol}</td>
                   <td
                     className={`p-3 ${
                       t.side === "BUY"

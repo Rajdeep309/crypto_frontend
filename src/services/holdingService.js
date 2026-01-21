@@ -3,19 +3,43 @@ import api from "./axiosInstance";
 /* ================= EXCHANGE HOLDINGS ================= */
 // Page load / manual refresh
 export const refreshExchangeHoldings = async () => {
-  const res = await api.post(
-    "/api/holding/public/refresh-exchange-holdings"
-  );
-  return res.data; // { message, data }
+  try {
+    const res = await api.post(
+      "/api/holding/public/refresh-exchange-holdings"
+    );
+    return res.data; // { message, data }
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.warn("No exchange holdings found");
+      return {
+        message: "No exchange holdings found",
+        data: [],
+      };
+    }
+
+    throw error; // other errors (network, auth, etc.)
+  }
 };
 
 /* ================= MANUAL HOLDINGS ================= */
 // Page load / after add-edit-delete
 export const refreshManualHoldings = async () => {
-  const res = await api.get(
-    "/api/holding/public/refresh-manual-holdings"
-  );
-  return res.data;
+  try {
+    const res = await api.get(
+      "/api/holding/public/refresh-manual-holdings"
+    );
+    return res.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.warn("No manual holdings found");
+      return {
+        message: "No manual holdings found",
+        data: [],
+      };
+    }
+
+    throw error;
+  }
 };
 
 /* ================= MANUAL ADD / EDIT ================= */
@@ -29,7 +53,6 @@ export const manualAddEditHolding = async (payload) => {
 };
 
 /* ================= MANUAL DELETE ================= */
-// 🔥 IMPORTANT (paper requirement)
 // Only for MANUAL holdings
 export const deleteManualHolding = async (assetSymbol) => {
   const res = await api.delete(

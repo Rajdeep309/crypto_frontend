@@ -1,101 +1,160 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertTriangle, ShieldAlert, Info } from "lucide-react";
 import AssetDrawer from "../components/portfolio/AssetDrawer";
+import {
+  refreshExchangeHoldings,
+  refreshManualHoldings,
+} from "../services/holdingService";
+import { getPriceSnapshots } from "../services/priceSnapshotService";
+import { fetchAssetPnL } from "../services/pnlService";
 
-const alerts = [
-  {
-    id: 1,
-    level: "HIGH",
-    title: "Potential Rug Pull Detected",
-    asset: "ADA",
-    source: "Wallet",
-    time: "5 min ago",
-    description:
-      "Token appears in CryptoScamDB; suspicious holder distribution detected."
-  },
-  {
-    id: 2,
-    level: "MEDIUM",
-    title: "High Volatility Token",
-    asset: "SOL",
-    source: "Binance",
-    time: "1 hour ago",
-    description:
-      "Price changed more than 25% in the last 24 hours."
-  },
-  {
-    id: 3,
-    level: "LOW",
-    title: "Low Liquidity",
-    asset: "DOGE",
-    source: "Metamask",
-    time: "Yesterday",
-    description:
-      "Daily trading volume under $10k; may be hard to exit."
-  }
-];
-
+/* ================= HELPERS ================= */
 const badgeStyle = {
   HIGH: "bg-red-500/20 text-red-400",
   MEDIUM: "bg-yellow-500/20 text-yellow-400",
-  LOW: "bg-emerald-500/20 text-emerald-400"
+  LOW: "bg-emerald-500/20 text-emerald-400",
 };
 
 const iconMap = {
   HIGH: AlertTriangle,
   MEDIUM: ShieldAlert,
-  LOW: Info
+  LOW: Info,
 };
 
+/* ================= PAGE ================= */
 export default function RiskAlertsPage() {
+  const [alerts, setAlerts] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  /* ================= LOAD DATA ================= */
+  useEffect(() => {
+    loadRiskAlerts();
+  }, []);
+
+  const loadRiskAlerts = async () => {
+    try {
+      setLoading(true);
+
+      /* 1️⃣ LOAD HOLDINGS */
+      const [exRes, manRes] = await Promise.all([
+        refreshExchangeHoldings(),
+        refreshManualHoldings(),
+      ]);
+
+      const holdings = [
+        ...(exRes?.data || []),
+        ...(manRes?.data || []),
+      ];
+
+      const alertsTemp = [];
+
+      /* 2️⃣ PROCESS EACH HOLDING */
+      for (const h of holdings) {
+        if (!h?.assetSymbol) continue;
+
+        const symbol = h.assetSymbol.toUpperCase();
+
+        /* PRICE SNAPSHOT */
+        const snapRes = await getPriceSnapshots(symbol);
+        const prices = snapRes?.data?.data || [];
+
+        if (!prices.length) continue;
+
+        const latestPrice =
+          prices[prices.length - 1]?.priceUsd ?? 0;
+
+        /* PnL */
+        const pnlRes = await fetchAssetPnL(symbol);
+        const pnl = pnlRes?.data?.data;
+
+        if (!pnl || !pnl.invested) continue;
+
+        const pnlPercent =
+          (pnl.unrealizedPnL / pnl.invested) * 100;
+
+        /* 3️⃣ RISK LOGIC */
+        let level = "LOW";
+        let title = "Stable Asset";
+        let description = "No major risk detected.";
+
+        if (pnlPercent <= -10) {
+          level = "HIGH";
+          title = "High Loss Detected";
+          description = `Unrealized loss is ${pnlPercent.toFixed(2)}%`;
+        } else if (pnlPercent <= -5) {
+          level = "MEDIUM";
+          title = "Moderate Risk";
+          description = `Asset is down ${pnlPercent.toFixed(2)}%`;
+        }
+
+        alertsTemp.push({
+          id: symbol,
+          asset: symbol,
+          level,
+          title,
+          description,
+          source: h.walletType || "MANUAL",
+          price: latestPrice,
+          pnlPercent,
+          holding: h,
+        });
+      }
+
+      setAlerts(alertsTemp);
+    } catch (err) {
+      console.error("Risk alert load failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* SUMMARY COUNTS */
   const high = alerts.filter((a) => a.level === "HIGH").length;
   const medium = alerts.filter((a) => a.level === "MEDIUM").length;
   const low = alerts.filter((a) => a.level === "LOW").length;
 
-  /* 🔗 Open Asset Drawer */
+  /* VIEW ASSET */
   const openAsset = (alert) => {
     setSelectedAsset({
-      asset: alert.asset,
-      exchange: alert.source,
-      qty: 0,
-      price: 41000, // mock price
-      value: 0,
-      risk: alert.level,
-      notes: alert.description
+      assetSymbol: alert.asset,
+      quantity: alert.holding.quantity,
+      avgCost: alert.holding.avgCost,
+      source: alert.source,
     });
   };
 
+  /* ================= UI ================= */
   return (
     <div className="space-y-8">
-      {/* Header */}
-      {/* <div>
-        <h1 className="text-2xl font-bold">Risk & Alerts</h1>
-        <p className="text-slate-400">
-          Scam and risk insights based on your holdings (mock data).
-        </p>
-      </div> */}
-
-      {/* Summary Cards */}
+      {/* SUMMARY */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <SummaryCard title="High Risk" count={high} color="text-red-400" />
         <SummaryCard title="Medium Risk" count={medium} color="text-yellow-400" />
         <SummaryCard title="Low Risk" count={low} color="text-emerald-400" />
       </div>
 
-      {/* Alerts List */}
+      {/* ALERTS */}
       <div className="bg-[#0b1220] border border-white/5 rounded-2xl p-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-semibold">Active Risk & Scam Alerts</h2>
+          <h2 className="font-semibold">Risk Alerts</h2>
           <span className="text-sm text-slate-400">
             {alerts.length} alerts
           </span>
         </div>
 
+        {loading && (
+          <p className="text-slate-400">Loading risk analysis...</p>
+        )}
+
+        {!loading && alerts.length === 0 && (
+          <p className="text-slate-400">No risk alerts detected 🎉</p>
+        )}
+
         <div className="space-y-3">
           {alerts.map((alert) => {
             const Icon = iconMap[alert.level];
+
             return (
               <div
                 key={alert.id}
@@ -115,7 +174,7 @@ export default function RiskAlertsPage() {
                     <div>
                       <p className="font-medium">{alert.title}</p>
                       <p className="text-sm text-slate-400">
-                        Token {alert.asset} · {alert.source} · {alert.time}
+                        {alert.asset} · {alert.source}
                       </p>
                     </div>
                   </div>
@@ -131,7 +190,6 @@ export default function RiskAlertsPage() {
                   {alert.description}
                 </p>
 
-                {/* ✅ WORKING BUTTON */}
                 <button
                   onClick={() => openAsset(alert)}
                   className="mt-3 text-sm text-emerald-400 hover:underline"
@@ -144,7 +202,7 @@ export default function RiskAlertsPage() {
         </div>
       </div>
 
-      {/* ✅ ASSET DRAWER */}
+      {/* ASSET DRAWER */}
       <AssetDrawer
         asset={selectedAsset}
         onClose={() => setSelectedAsset(null)}
@@ -153,7 +211,7 @@ export default function RiskAlertsPage() {
   );
 }
 
-/* Summary Card */
+/* ================= SUMMARY CARD ================= */
 function SummaryCard({ title, count, color }) {
   return (
     <div className="bg-[#0b1220] border border-white/5 rounded-xl p-4">

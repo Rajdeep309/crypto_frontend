@@ -29,11 +29,13 @@ export default function ManualHoldingDrawer({
       assetSymbol: symbol.toUpperCase(),
       quantity: Number(qty),
       avgCost: Number(avgCost),
-      chain: chain.toUpperCase(), // ✅ uppercase
-      address, // optional
+
+      // ✅ OPTIONAL FIELDS (paper requirement)
+      chain: chain.trim() ? chain.trim().toUpperCase() : null,
+      address: address.trim() ? address.trim() : null,
     });
 
-    onSaved();
+    onSaved();   // refresh only after save
     onClose();
   };
 
@@ -51,13 +53,15 @@ export default function ManualHoldingDrawer({
           onChange={(e) => setSymbol(e.target.value)}
         />
 
+        {/* OPTIONAL */}
         <input
           className="w-full p-2 mb-3 bg-slate-800 rounded"
-          placeholder="Chain (BINANCE / ETHEREUM)"
+          placeholder="Chain (optional)"
           value={chain}
           onChange={(e) => setChain(e.target.value)}
         />
 
+        {/* OPTIONAL */}
         <input
           className="w-full p-2 mb-3 bg-slate-800 rounded"
           placeholder="Address (optional)"

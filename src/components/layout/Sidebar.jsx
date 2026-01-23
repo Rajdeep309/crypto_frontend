@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Wallet,
@@ -7,9 +7,17 @@ import {
   Settings,
   PlusCircle,
   ArrowLeftRight,
+  LogOut,
 } from "lucide-react";
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    navigate("/login");
+  };
+
   return (
     <>
       <style>{`
@@ -128,11 +136,35 @@ export default function Sidebar() {
         .sidebar-footer {
           margin-top: auto;
           padding-top: 2rem;
-          font-size: 0.75rem;
-          color: #64748b;
-          text-align: center;
           border-top: 1px solid rgba(255, 255, 255, 0.05);
           animation: fadeIn 1s ease-out;
+        }
+
+        .logout-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 0.875rem;
+          padding: 0.875rem 1rem;
+          border-radius: 12px;
+          font-size: 0.9rem;
+          font-weight: 700;
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          border: none;
+          color: #ffffff;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .logout-btn:hover {
+          background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .logout-btn:hover .nav-icon {
+          transform: scale(1.1);
         }
 
         @media (max-width: 1024px) {
@@ -157,8 +189,11 @@ export default function Sidebar() {
             font-size: 0.7rem;
           }
 
-          .sidebar-footer {
-            font-size: 0.6rem;
+          .logout-btn {
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.75rem 0.5rem;
+            font-size: 0.7rem;
           }
         }
 
@@ -249,9 +284,12 @@ export default function Sidebar() {
           </NavLink>
         </nav>
 
-        {/* Footer */}
+        {/* Footer with Logout */}
         <div className="sidebar-footer">
-          v1.0 • Crypto Portfolio Tracker
+          <button onClick={handleLogout} className="logout-btn">
+            <LogOut size={18} className="nav-icon" />
+            Logout
+          </button>
         </div>
       </aside>
     </>

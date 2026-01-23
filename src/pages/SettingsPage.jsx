@@ -34,11 +34,6 @@ export default function SettingsPage() {
   return (
     <>
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-30px) translateX(20px); }
-        }
-
         @keyframes slideIn {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
@@ -54,32 +49,6 @@ export default function SettingsPage() {
           min-height: 100vh;
           position: relative;
           overflow-x: hidden;
-        }
-
-        body::before, body::after {
-          content: '';
-          position: fixed;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        body::before {
-          width: 500px;
-          height: 500px;
-          top: -150px;
-          left: -150px;
-          animation: float 20s infinite ease-in-out;
-        }
-
-        body::after {
-          width: 400px;
-          height: 400px;
-          bottom: -100px;
-          right: -100px;
-          animation: float 15s infinite ease-in-out reverse;
         }
 
         .settings-container {
@@ -215,10 +184,6 @@ export default function SettingsPage() {
 
           .settings-title {
             font-size: 1.75rem;
-          }
-
-          body::before, body::after {
-            display: none;
           }
         }
       `}</style>

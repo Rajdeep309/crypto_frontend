@@ -102,9 +102,131 @@ export default function TradesPage() {
 
   /* ================= FETCH ALL (WARNING) ================= */
   const fetchAllWithWarning = async () => {
-    const ok = window.confirm(
-      "⚠️ Fetching ALL previous trades may take 20–30 minutes and may hit exchange rate limits.\n\nDo you want to continue?"
-    );
+    // Create custom styled confirm dialog
+    const dialogOverlay = document.createElement('div');
+    dialogOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(4px);
+    `;
+
+    const dialogBox = document.createElement('div');
+    dialogBox.style.cssText = `
+      background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 500px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    `;
+
+    dialogBox.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="
+          width: 48px;
+          height: 48px;
+          background: rgba(239, 68, 68, 0.15);
+          border: 2px solid rgba(239, 68, 68, 0.3);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+        ">⚠️</div>
+        <h3 style="
+          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 0;
+        ">Warning</h3>
+      </div>
+      <p style="
+        color: #cbd5e1;
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+      ">Fetching ALL previous trades may take 20–30 minutes and may hit exchange rate limits.<br><br>Do you want to continue?</p>
+      <div style="
+        display: flex;
+        gap: 1rem;
+      ">
+        <button id="confirmCancel" style="
+          flex: 1;
+          padding: 0.875rem 1.5rem;
+          background: rgba(100, 116, 139, 0.2);
+          border: 1px solid rgba(100, 116, 139, 0.3);
+          border-radius: 12px;
+          color: #cbd5e1;
+          font-weight: 600;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        ">Cancel</button>
+        <button id="confirmOk" style="
+          flex: 1;
+          padding: 0.875rem 1.5rem;
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          border: none;
+          border-radius: 12px;
+          color: #ffffff;
+          font-weight: 700;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        ">Continue</button>
+      </div>
+    `;
+
+    dialogOverlay.appendChild(dialogBox);
+    document.body.appendChild(dialogOverlay);
+
+    // Add hover effects
+    const cancelBtn = dialogBox.querySelector('#confirmCancel');
+    const okBtn = dialogBox.querySelector('#confirmOk');
+    
+    cancelBtn.onmouseover = () => {
+      cancelBtn.style.background = 'rgba(100, 116, 139, 0.3)';
+      cancelBtn.style.transform = 'translateY(-2px)';
+    };
+    cancelBtn.onmouseout = () => {
+      cancelBtn.style.background = 'rgba(100, 116, 139, 0.2)';
+      cancelBtn.style.transform = 'translateY(0)';
+    };
+
+    okBtn.onmouseover = () => {
+      okBtn.style.transform = 'translateY(-2px)';
+      okBtn.style.boxShadow = '0 6px 25px rgba(239, 68, 68, 0.4)';
+    };
+    okBtn.onmouseout = () => {
+      okBtn.style.transform = 'translateY(0)';
+      okBtn.style.boxShadow = '0 4px 15px rgba(239, 68, 68, 0.3)';
+    };
+
+    const ok = await new Promise((resolve) => {
+      cancelBtn.onclick = () => {
+        document.body.removeChild(dialogOverlay);
+        resolve(false);
+      };
+      okBtn.onclick = () => {
+        document.body.removeChild(dialogOverlay);
+        resolve(true);
+      };
+      dialogOverlay.onclick = (e) => {
+        if (e.target === dialogOverlay) {
+          document.body.removeChild(dialogOverlay);
+          resolve(false);
+        }
+      };
+    });
 
     if (!ok) return;
 
@@ -133,11 +255,6 @@ export default function TradesPage() {
   return (
     <>
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-30px) translateX(20px); }
-        }
-
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -151,32 +268,6 @@ export default function TradesPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
             'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
             sans-serif;
-        }
-
-        body::before, body::after {
-          content: '';
-          position: fixed;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        body::before {
-          width: 500px;
-          height: 500px;
-          top: -150px;
-          left: -150px;
-          animation: float 20s infinite ease-in-out;
-        }
-
-        body::after {
-          width: 400px;
-          height: 400px;
-          bottom: -100px;
-          right: -100px;
-          animation: float 15s infinite ease-in-out reverse;
         }
 
         .trades-container {
@@ -400,11 +491,6 @@ export default function TradesPage() {
         }
 
         @media (max-width: 480px) {
-          body::before,
-          body::after {
-            display: none;
-          }
-
           .trades-table-wrapper {
             padding: 1rem;
           }
@@ -420,8 +506,6 @@ export default function TradesPage() {
       <div className="trades-container">
         {/* ================= HEADER ================= */}
         <div className="trades-header">
-          <h1 className="trades-title">Trades</h1>
-
           <div className="action-buttons">
             <button
               onClick={syncTrades}

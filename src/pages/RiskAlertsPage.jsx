@@ -165,11 +165,6 @@ export default function RiskAlertsPage() {
     <>
       
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-30px) translateX(20px); }
-        }
-
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -183,32 +178,6 @@ export default function RiskAlertsPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
             'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
             sans-serif;
-        }
-
-        body::before, body::after {
-          content: '';
-          position: fixed;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        body::before {
-          width: 500px;
-          height: 500px;
-          top: -150px;
-          left: -150px;
-          animation: float 20s infinite ease-in-out;
-        }
-
-        body::after {
-          width: 400px;
-          height: 400px;
-          bottom: -100px;
-          right: -100px;
-          animation: float 15s infinite ease-in-out reverse;
         }
 
         .risk-alerts-container {
@@ -430,11 +399,6 @@ export default function RiskAlertsPage() {
         }
 
         @media (max-width: 480px) {
-          body::before,
-          body::after {
-            display: none;
-          }
-
           .alerts-header {
             flex-direction: column;
             align-items: flex-start;
@@ -527,4 +491,3 @@ export default function RiskAlertsPage() {
     </>
   );
 }
-

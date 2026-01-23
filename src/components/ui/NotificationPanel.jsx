@@ -12,127 +12,253 @@ export default function NotificationPanel() {
   };
 
   return createPortal(
-    <div
-      style={{
-        position: "fixed",
-        top: "72px",          // topbar height
-        right: "24px",
-        width: "360px",
-        maxHeight: "420px",
-        background: "#0b1220",
-        border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: "16px",
-        boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
-        zIndex: 2147483647,   // 🔥 always on top
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      {/* HEADER */}
-      <div
-        style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexShrink: 0,
-        }}
-      >
-        <span style={{ fontWeight: 600 }}>Notifications</span>
+    <>
+      <style>{`
+        @keyframes slideInDown {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            clearAll();
-          }}
-          style={{
-            color: "#f87171",
-            fontSize: "14px",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Clear
-        </button>
-      </div>
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
 
-      {/* BODY */}
-      <div
-        style={{
-          padding: "12px",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
-        {notifications.length === 0 && (
-          <p
-            style={{
-              textAlign: "center",
-              color: "#94a3b8",
-              padding: "24px 0",
-              fontSize: "14px",
+        .notification-panel {
+          position: fixed;
+          top: 72px;
+          right: 24px;
+          width: 380px;
+          max-height: 480px;
+          background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8),
+                      0 0 40px rgba(16, 185, 129, 0.1);
+          z-index: 2147483647;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          animation: slideInDown 0.3s ease-out;
+        }
+
+        .notification-header {
+          padding: 1rem 1.25rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-shrink: 0;
+          background: rgba(15, 23, 42, 0.6);
+        }
+
+        .notification-title {
+          font-weight: 700;
+          font-size: 1rem;
+          color: #ffffff;
+          letter-spacing: -0.3px;
+        }
+
+        .clear-button {
+          color: #f87171;
+          font-size: 0.875rem;
+          font-weight: 600;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          border-radius: 8px;
+          padding: 0.375rem 0.875rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .clear-button:hover {
+          background: rgba(239, 68, 68, 0.2);
+          border-color: rgba(239, 68, 68, 0.4);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+
+        .notification-body {
+          padding: 1rem;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          flex: 1;
+        }
+
+        .notification-body::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .notification-body::-webkit-scrollbar-track {
+          background: rgba(15, 23, 42, 0.6);
+          border-radius: 4px;
+        }
+
+        .notification-body::-webkit-scrollbar-thumb {
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(52, 211, 153, 0.4) 100%);
+          border-radius: 4px;
+        }
+
+        .notification-body::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.6) 0%, rgba(52, 211, 153, 0.6) 100%);
+        }
+
+        .empty-state {
+          text-align: center;
+          color: #94a3b8;
+          padding: 3rem 0;
+          font-size: 0.9rem;
+        }
+
+        .notification-item {
+          background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.6) 100%);
+          padding: 1rem;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          animation: fadeIn 0.4s ease-out;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .notification-item::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 100%;
+          width: 4px;
+          transition: width 0.3s ease;
+        }
+
+        .notification-item:hover {
+          background: linear-gradient(145deg, rgba(30, 41, 59, 1) 0%, rgba(15, 23, 42, 0.8) 100%);
+          transform: translateX(4px);
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .notification-item:hover::before {
+          width: 6px;
+        }
+
+        .notification-item-unread {
+          background: linear-gradient(145deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+          border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .notification-item-read {
+          background: linear-gradient(145deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.4) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.03);
+          opacity: 0.8;
+        }
+
+        .notification-item-title {
+          font-weight: 700;
+          font-size: 0.9rem;
+          margin-bottom: 0.375rem;
+          letter-spacing: -0.2px;
+        }
+
+        .notification-item-message {
+          font-size: 0.8rem;
+          color: #cbd5e1;
+          line-height: 1.5;
+          margin-bottom: 0.5rem;
+        }
+
+        .notification-item-time {
+          font-size: 0.7rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+          .notification-panel {
+            right: 16px;
+            width: calc(100vw - 32px);
+            max-width: 380px;
+          }
+        }
+      `}</style>
+
+      <div className="notification-panel">
+        {/* HEADER */}
+        <div className="notification-header">
+          <span className="notification-title">Notifications</span>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              clearAll();
             }}
+            className="clear-button"
           >
-            No notifications
-          </p>
-        )}
+            Clear All
+          </button>
+        </div>
 
-        {notifications.map((n) => {
-          const color = getColor(n.title);
+        {/* BODY */}
+        <div className="notification-body">
+          {notifications.length === 0 && (
+            <p className="empty-state">
+              No notifications
+            </p>
+          )}
 
-          return (
-            <div
-              key={n.id}
-              onClick={() => markAsRead(n.id)}
-              style={{
-                background: n.read ? "#1f2937" : "#243144",
-                padding: "12px",
-                borderRadius: "12px",
-                cursor: "pointer",
-                borderLeft: `4px solid ${color}`,
-              }}
-            >
-              {/* TITLE */}
-              <p
+          {notifications.map((n) => {
+            const color = getColor(n.title);
+
+            return (
+              <div
+                key={n.id}
+                onClick={() => markAsRead(n.id)}
+                className={`notification-item ${n.read ? 'notification-item-read' : 'notification-item-unread'}`}
                 style={{
-                  fontWeight: 700,
-                  color,
-                  marginBottom: "4px",
+                  '--border-color': color,
                 }}
               >
-                {n.title}
-              </p>
+                {/* Border accent */}
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  height: '100%',
+                  width: '4px',
+                  background: color,
+                  transition: 'width 0.3s ease'
+                }}></div>
 
-              {/* MESSAGE */}
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: "#cbd5e1",
-                  marginBottom: "4px",
-                }}
-              >
-                {n.message}
-              </p>
+                {/* TITLE */}
+                <p
+                  className="notification-item-title"
+                  style={{ color }}
+                >
+                  {n.title}
+                </p>
 
-              {/* TIME */}
-              <p
-                style={{
-                  fontSize: "11px",
-                  color: "#64748b",
-                }}
-              >
-                {n.time}
-              </p>
-            </div>
-          );
-        })}
+                {/* MESSAGE */}
+                <p className="notification-item-message">
+                  {n.message}
+                </p>
+
+                {/* TIME */}
+                <p className="notification-item-time">
+                  {n.time}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>,
+    </>,
     document.body
   );
 }

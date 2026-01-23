@@ -14,6 +14,10 @@ const PAGE_META = {
     title: "Portfolio",
     subtitle: "Your crypto holdings and allocations",
   },
+  "/trades": {
+    title: "Trades",
+    subtitle: "View and manage your trading history",
+  },
   "/alerts": {
     title: "Risk & Alerts",
     subtitle: "Security warnings and risk signals",

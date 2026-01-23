@@ -47,11 +47,6 @@ export default function AddExchangePage() {
   return (
     <>
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-30px) translateX(20px); }
-        }
-
         @keyframes slideIn {
           from {
             opacity: 0;
@@ -71,32 +66,6 @@ export default function AddExchangePage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
             'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
             sans-serif;
-        }
-
-        body::before, body::after {
-          content: '';
-          position: fixed;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        body::before {
-          width: 500px;
-          height: 500px;
-          top: -150px;
-          left: -150px;
-          animation: float 20s infinite ease-in-out;
-        }
-
-        body::after {
-          width: 400px;
-          height: 400px;
-          bottom: -100px;
-          right: -100px;
-          animation: float 15s infinite ease-in-out reverse;
         }
 
         .exchange-container {
@@ -262,11 +231,6 @@ export default function AddExchangePage() {
 
           .exchange-title {
             font-size: 1.75rem;
-          }
-
-          body::before,
-          body::after {
-            display: none;
           }
         }
       `}</style>

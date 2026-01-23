@@ -44,11 +44,155 @@ export default function PortfolioPage() {
     loadHoldings();
   }, []);
 
-  /* ✅ BACKEND DELETE + SAFE REFRESH */
+  /* ✅ BACKEND DELETE + SAFE REFRESH WITH STYLED DIALOG */
   const handleDeleteManual = async (asset) => {
-    const ok = window.confirm(
-      `Delete ${asset.assetSymbol}?`
-    );
+    // Create custom styled confirm dialog
+    const dialogOverlay = document.createElement('div');
+    dialogOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.3s ease-out;
+    `;
+
+    const dialogBox = document.createElement('div');
+    dialogBox.style.cssText = `
+      background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      animation: slideUp 0.3s ease-out;
+    `;
+
+    dialogBox.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="
+          width: 48px;
+          height: 48px;
+          background: rgba(239, 68, 68, 0.15);
+          border: 2px solid rgba(239, 68, 68, 0.3);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+        ">🗑️</div>
+        <h3 style="
+          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 0;
+          letter-spacing: -0.5px;
+        ">Delete Holding</h3>
+      </div>
+      <p style="
+        color: #cbd5e1;
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+      ">Are you sure you want to delete <strong style="color: #ffffff;">${asset.assetSymbol}</strong>?<br><br>This action cannot be undone.</p>
+      <div style="
+        display: flex;
+        gap: 1rem;
+      ">
+        <button id="deleteCancel" style="
+          flex: 1;
+          padding: 0.875rem 1.5rem;
+          background: rgba(100, 116, 139, 0.2);
+          border: 1px solid rgba(100, 116, 139, 0.3);
+          border-radius: 12px;
+          color: #cbd5e1;
+          font-weight: 600;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        ">Cancel</button>
+        <button id="deleteConfirm" style="
+          flex: 1;
+          padding: 0.875rem 1.5rem;
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          border: none;
+          border-radius: 12px;
+          color: #ffffff;
+          font-weight: 700;
+          font-size: 0.95rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        ">Delete</button>
+      </div>
+    `;
+
+    dialogOverlay.appendChild(dialogBox);
+    document.body.appendChild(dialogOverlay);
+
+    // Add keyframe animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Add hover effects
+    const cancelBtn = dialogBox.querySelector('#deleteCancel');
+    const confirmBtn = dialogBox.querySelector('#deleteConfirm');
+    
+    cancelBtn.onmouseover = () => {
+      cancelBtn.style.background = 'rgba(100, 116, 139, 0.3)';
+      cancelBtn.style.transform = 'translateY(-2px)';
+    };
+    cancelBtn.onmouseout = () => {
+      cancelBtn.style.background = 'rgba(100, 116, 139, 0.2)';
+      cancelBtn.style.transform = 'translateY(0)';
+    };
+
+    confirmBtn.onmouseover = () => {
+      confirmBtn.style.transform = 'translateY(-2px)';
+      confirmBtn.style.boxShadow = '0 6px 25px rgba(239, 68, 68, 0.4)';
+    };
+    confirmBtn.onmouseout = () => {
+      confirmBtn.style.transform = 'translateY(0)';
+      confirmBtn.style.boxShadow = '0 4px 15px rgba(239, 68, 68, 0.3)';
+    };
+
+    const ok = await new Promise((resolve) => {
+      cancelBtn.onclick = () => {
+        document.body.removeChild(dialogOverlay);
+        document.head.removeChild(style);
+        resolve(false);
+      };
+      confirmBtn.onclick = () => {
+        document.body.removeChild(dialogOverlay);
+        document.head.removeChild(style);
+        resolve(true);
+      };
+      dialogOverlay.onclick = (e) => {
+        if (e.target === dialogOverlay) {
+          document.body.removeChild(dialogOverlay);
+          document.head.removeChild(style);
+          resolve(false);
+        }
+      };
+    });
+
     if (!ok) return;
 
     await deleteManualHolding(asset.assetSymbol);
@@ -58,11 +202,6 @@ export default function PortfolioPage() {
   return (
     <>
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); }
-          50% { transform: translateY(-30px) translateX(20px); }
-        }
-
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -76,32 +215,6 @@ export default function PortfolioPage() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
             'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
             sans-serif;
-        }
-
-        body::before, body::after {
-          content: '';
-          position: fixed;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          pointer-events: none;
-          z-index: 0;
-        }
-
-        body::before {
-          width: 500px;
-          height: 500px;
-          top: -150px;
-          left: -150px;
-          animation: float 20s infinite ease-in-out;
-        }
-
-        body::after {
-          width: 400px;
-          height: 400px;
-          bottom: -100px;
-          right: -100px;
-          animation: float 15s infinite ease-in-out reverse;
         }
 
         .portfolio-container {
@@ -183,11 +296,6 @@ export default function PortfolioPage() {
         }
 
         @media (max-width: 480px) {
-          body::before,
-          body::after {
-            display: none;
-          }
-
           .portfolio-container {
             padding: 1rem;
           }

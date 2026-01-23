@@ -1,21 +1,22 @@
 import { AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 export default function CriticalAlertsPreview() {
   const navigate = useNavigate();
+  const [alerts, setAlerts] = useState([]);
 
-  const alerts = [
-    {
-      level: "HIGH",
-      title: "Potential Rug Pull Detected",
-      description: "Token listed in CryptoScamDB",
-    },
-    {
-      level: "MEDIUM",
-      title: "High Volatility Asset",
-      description: "Price changed 28% in last 24h",
-    },
-  ];
+  useEffect(() => {
+    const stored =
+      JSON.parse(localStorage.getItem("risk_alerts")) || [];
+
+    // 🔥 ONLY HIGH & MEDIUM
+    const critical = stored.filter(
+      (a) => a.level === "HIGH" || a.level === "MEDIUM"
+    );
+
+    setAlerts(critical.slice(0, 3)); // max 3
+  }, []);
 
   const styles = {
     HIGH: "border-red-500/50 bg-red-500/10 text-red-400",
@@ -30,6 +31,12 @@ export default function CriticalAlertsPreview() {
       </div>
 
       <div className="space-y-3">
+        {alerts.length === 0 && (
+          <p className="text-sm text-slate-400">
+            No critical risks detected 🎉
+          </p>
+        )}
+
         {alerts.map((alert, index) => (
           <div
             key={index}

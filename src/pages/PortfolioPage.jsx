@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import HoldingsTable from "../components/portfolio/HoldingsTable";
 import ManualHoldingDrawer from "../components/portfolio/ManualHoldingDrawer";
 import AssetDrawer from "../components/portfolio/AssetDrawer";
@@ -7,6 +7,8 @@ import {
   refreshManualHoldings,
   deleteManualHolding,
 } from "../services/holdingService";
+import { useLocation } from "react-router-dom";
+
 
 export default function PortfolioPage() {
   const [exchangeHoldings, setExchangeHoldings] = useState([]);
@@ -14,35 +16,38 @@ export default function PortfolioPage() {
   const [viewAsset, setViewAsset] = useState(null);
   const [editAsset, setEditAsset] = useState(null);
   const [loading, setLoading] = useState(true);
+   const location = useLocation();
+const didFetch = useRef(false);
 
-  // 🔥 STRICT MODE GUARD (KEY FIX)
-  const hasLoadedRef = useRef(false);
 
-  const loadHoldings = async () => {
-    try {
-      setLoading(true);
+const loadHoldings = async (force = false) => {
+  try {
+    setLoading(true);
 
-      const [exRes, manRes] = await Promise.all([
-        refreshExchangeHoldings(),
-        refreshManualHoldings(),
-      ]);
+    const [exRes, manRes] = await Promise.all([
+      refreshExchangeHoldings(force),
+      refreshManualHoldings(force),
+    ]);
 
-      setExchangeHoldings(exRes?.data || []);
-      setManualHoldings(manRes?.data || []);
-    } catch (err) {
-      console.error("Failed to load holdings", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setExchangeHoldings(exRes?.data || []);
+    setManualHoldings(manRes?.data || []);
+  } catch (err) {
+    console.error("Failed to load holdings", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  useEffect(() => {
-    // ✅ Prevent double API call in React 18 StrictMode
-    if (hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
 
-    loadHoldings();
-  }, []);
+useEffect(() => {
+  if (didFetch.current) return;
+
+  didFetch.current = true;
+  loadHoldings(true);
+}, [location.pathname]);
+
+
+
 
   /* ✅ BACKEND DELETE + SAFE REFRESH WITH STYLED DIALOG */
   const handleDeleteManual = async (asset) => {
@@ -199,8 +204,7 @@ export default function PortfolioPage() {
 
 // 🔥 ONLY manual state update (NO refresh feeling)
 setManualHoldings((prev) =>
-prev.filter((h) => h.assetSymbol !== asset.assetSymbol)
-
+  prev.filter((h) => h.assetSymbol !== asset.assetSymbol)
 );
 
   };
@@ -354,13 +358,19 @@ prev.filter((h) => h.assetSymbol !== asset.assetSymbol)
           />
         )}
 
-   <ManualHoldingDrawer
+       <ManualHoldingDrawer
   asset={editAsset}
   onClose={() => setEditAsset(null)}
-  onSaved={(newAsset) =>
-    setManualHoldings((prev) => [...prev, newAsset])
-  }
+  onSaved={() => {
+  // clearHoldingCache();
+  refreshManualHoldings(true).then((res) => {
+    setManualHoldings(res?.data || []);
+  });
+  setEditAsset(null);
+}}
+
 />
+
 
 
       </div>

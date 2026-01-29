@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://cryptoportfoliotrackerbackend1-production.up.railway.app",
+  baseURL: "https://cryptoportfoliotrackerbackend1-production.up.railway.app",
 });
 
 api.interceptors.request.use(

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://cryptoportfoliotrackerbackend1-production.up.railway.app/api/apiKey/public";
+const API_URL = "https://cryptoportfoliotrackerbackend1-production.up.railway.app/api/apiKey/public";
 
 export const addExchange = async (exchangeData) => {
   const token = localStorage.getItem("token");
